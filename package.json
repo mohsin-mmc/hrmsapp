@@ -1,0 +1,35 @@
+{
+  "name": "MMCHRMS",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node node_modules/react-native/local-cli/cli.js start",
+    "test": "jest"
+  },
+  "dependencies": {
+    "axios": "^0.18.0",
+    "moment": "^2.24.0",
+    "react": "16.6.1",
+    "react-native": "0.57.5",
+    "react-native-background-job": "^2.2.0",
+    "react-native-camera": "^1.10.2",
+    "react-native-datepicker": "^1.7.2",
+    "react-native-gesture-handler": "^1.0.15",
+    "react-native-imei": "^0.1.2",
+    "react-native-loading-spinner-overlay": "^1.0.1",
+    "react-native-sqlite-storage": "^3.3.9",
+    "react-native-vector-icons": "^6.3.0",
+    "react-native-xml2js": "^1.0.3",
+    "react-navigation": "^3.3.0",
+    "soap-everywhere": "^1.0.7"
+  },
+  "devDependencies": {
+    "babel-jest": "24.1.0",
+    "jest": "24.1.0",
+    "metro-react-native-babel-preset": "0.51.1",
+    "react-test-renderer": "16.6.1"
+  },
+  "jest": {
+    "preset": "react-native"
+  }
+}
