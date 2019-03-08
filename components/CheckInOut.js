@@ -15,9 +15,11 @@ import {
 const IMEI = require('react-native-imei');
 import Icon from "react-native-vector-icons/Entypo"
 var PushNotification = require('react-native-push-notification');
+import IconMI from "react-native-vector-icons/MaterialCommunityIcons"
 
 import moment from "moment"
 import Spinner from "react-native-loading-spinner-overlay";
+import ProgressCircle from 'react-native-progress-circle'
 
 import {
   creatAttendaneTable,
@@ -31,41 +33,42 @@ import { appMainBackgroundColor, appMainBlue } from '../assets/Constants'
 import { RNCamera } from 'react-native-camera'
 
 import BackgroundJob from 'react-native-background-job';
- 
+import MyHeader from './Layouts/Header';
+
 const sendPeriodicData = {
   jobKey: "sendPeriodicData",
   job: () => {
     let date = moment(new Date).format('YYYY-MM-DD')
     let time = moment(new Date).format('HH:mm:ss')
-      let imei = IMEI.getImei()
+    let imei = IMEI.getImei()
     navigator.geolocation.getCurrentPosition(
       position => {
         let lat = position.coords.latitude
         let long = position.coords.longitude
         sendPeriodicDatas(imei, lat, long, date, time)
-        .then(res => {
-          console.log(res)
-          NetInfo.isConnected.fetch().then(isConnected => {
-            DBsendData()
+          .then(res => {
+            console.log(res)
+            NetInfo.isConnected.fetch().then(isConnected => {
+              DBsendData()
+            })
           })
-        })  
-        .catch(err => {
-          console.log('same',err)
-        })
+          .catch(err => {
+            console.log('same', err)
+          })
       },
       error => {
         console.log("Unable to find location. Please reload.")
 
       },
       {
-        enableHighAccuracy: false,timeout: 60000,
+        enableHighAccuracy: false, timeout: 60000,
       }
     );
-    }
- };
-  
- BackgroundJob.register(sendPeriodicData);
- 
+  }
+};
+
+BackgroundJob.register(sendPeriodicData);
+
 
 export async function request_READ_PHONE_STATE() {
   try {
@@ -124,7 +127,8 @@ export default class CheckInOut extends Component {
       loading: false,
       type: null,
       imei: 0,
-      err_location: true
+      err_location: true,
+      per:0
     }
     // this.handleAppStatechange = this.handleAppStatechange.bind(this)
 
@@ -132,39 +136,39 @@ export default class CheckInOut extends Component {
 
   static navigationOptions = {
     tabBarIcon: ({ tintColor }) => (
-        <Icon name="location-pin" size={25} style={{color: tintColor}}/>
+      <Icon name="location-pin" size={25} style={{ color: tintColor }} />
     )
-}
+  }
 
 
   async componentDidMount() {
 
     await request_READ_PHONE_STATE()
     await request_ACCESS_FINE_LOCATION();
-    this.setState({ loading: true }) 
+    this.setState({ loading: true })
     this.getCord();
     this.makeTable();
     this.setTtype();
     this.sendData();
     // this.appState()
     this.didFocusListener = this.props.navigation.addListener(
-      'didFocus',() => { 
+      'didFocus', () => {
         this.makeTable();
-        this.setState({ loading: true }) 
+        this.setState({ loading: true })
         this.getCord();
         this.setTtype();
         this.sendData();
       },
-      );
+    );
   }
 
 
   // appState(){
   //   AppState.addEventListener('change',this.handleAppStatechange)
-    
+
   // }
 
-  componentWillUnmount(){
+  componentWillUnmount() {
     console.log('asd')
     // AppState.removeEventListener('change',this.handleAppStatechange)
   }
@@ -177,7 +181,7 @@ export default class CheckInOut extends Component {
   //       },
   //       requestPermissions: true
   //     })
-      
+
   //     PushNotification.localNotificationSchedule({
   //       color:'red',
   //       message: "You forgot to check out Today.Open app to check out.", 
@@ -272,16 +276,17 @@ export default class CheckInOut extends Component {
           loading: false
         })
         this.sendData();
-          
+        this.makeStart()
+
         var sendPeriodicData = {
           jobKey: "sendPeriodicData",
-          allowExecutionInForeground : true,
+          allowExecutionInForeground: true,
           period: 900000,
           // period: 40000,
           // exact: true,
-          allowWhileIdle : true
+          allowWhileIdle: true
         }
-          
+
         BackgroundJob.schedule(sendPeriodicData);
       })
       .catch(err => {
@@ -316,10 +321,11 @@ export default class CheckInOut extends Component {
         );
         this.setState({
           type: 'checkOut',
-          loading: false
+          loading: false,
+          per: 0
         })
         this.sendData();
-        BackgroundJob.cancel({jobKey: 'sendPeriodicData'});
+        BackgroundJob.cancel({ jobKey: 'sendPeriodicData' });
       })
       .catch(err => {
         this.setState({
@@ -333,17 +339,36 @@ export default class CheckInOut extends Component {
       });
   }
 
-  refreshLocation(){
+  refreshLocation() {
     this.setState({
       loading: true,
     })
     this.getCord()
   }
 
+  makeStart() {
+    (this.state.type == "checkIn")?
+    setInterval(() => {
+      this.setState({
+        per: this.state.per + 6.25,
+        counter1: this.state.counter1 + 1
+      })
+    }, 1000)
+    :
+    null
+  }
+
+  check(type) {
+    this.setState({
+      type: type,
+    });
+    (type == 'checkIn') ? this.checkIn() : this.checkOut()
+  }
+
 
   render() {
 
-    let { type, imei, lat, long, err_location } = this.state;
+    let { type, imei, lat, long, err_location,per } = this.state;
     return (
       <View style={styles.mainApp}>
         <Spinner
@@ -351,51 +376,40 @@ export default class CheckInOut extends Component {
           textContent={'Requesting loaction...Please Wait'}
           textStyle={styles.spinnerTextStyle}
         />
+        <MyHeader props={this.props} title='Attendance' />
+
         <View style={styles.circleView}>
-          <View style={(type == 'checkOut' || type == null) ? styles.CircleShapeView : styles.CircleShapeViewRed}>
-            {/* <RNCamera
-              ref={ref => {
-                this.camera = ref;
-              }}
-              style={styles.preview}
-              type={RNCamera.Constants.Type.back}
-              //   flashMode={RNCamera.Constants.FlashMode.on}
-              permissionDialogTitle={'Permission to use camera'}
-              permissionDialogMessage={'We need your permission to use your camera phone'}
-              onGoogleVisionBarcodesDetected={({ barcodes }) => {
-                console.log(barcodes);
-              }}
-            /> */}
-            <Image style={styles.pic} source={require('../assets/images/icons.png')}/>
-          </View>
-        </View>
-        <View style={styles.headingView}>
-          <View style={styles.headingTextView}>
-            <Text style={styles.headingText}>
-              MMC HRMS
-            </Text>
-          </View >
-          <View style={styles.detailTextView}>
-            <Text style={styles.detailText}>Your Latitude: <Text style={{ fontWeight: 'normal' }}>{lat}</Text></Text>
-            <Text style={styles.detailText}>Your Longitude: <Text style={{ fontWeight: 'normal' }}>{long}</Text></Text>
-            <Text style={styles.detailText}>IMEI No: <Text style={{ fontWeight: 'normal' }}>{imei}</Text></Text>
-          </View>
+          <ProgressCircle
+            percent={per}
+            radius={120}
+            borderWidth={18}
+            color={appMainBackgroundColor}
+            shadowColor="white"
+            bgColor=
+            {(type == 'checkOut' || type == null) ? 'white' : 'white'}
+          >
+
+            <TouchableOpacity style={styles.TextView} onPress={(type == 'checkOut' || type == null) ? this.check.bind(this, 'checkIn') : this.check.bind(this, 'checkOut')}  >
+              <Image source={require('../assets/images/icons.png')} width="90%" height="90%"></Image>
+              {/* <Text style={styles.Text}>{(type == 'checkOut' || type == null) ? 'Check In' : 'Check Out'}</Text> */}
+            </TouchableOpacity>
+          </ProgressCircle>
+
         </View>
         {
           (err_location == false)?
-
           <View style={styles.btnView}>
             {
 
               (type == 'checkOut' || type == null) ?
                 <TouchableOpacity style={styles.checkInBtn} onPress={this.checkIn.bind(this)}>
-                  <Text style={{ color: 'white', fontSize: 16 }}>
+                  <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
                     Check in
                 </Text>
                 </TouchableOpacity>
                 :
                 <TouchableOpacity style={styles.checkOutBtn} onPress={this.checkOut.bind(this)}>
-                  <Text style={{ color: 'white', fontSize: 16 }}>
+                  <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
                     Check Out
                 </Text>
                 </TouchableOpacity>
@@ -404,13 +418,33 @@ export default class CheckInOut extends Component {
           </View>
           :
           <View style={styles.btnView}>
-            <TouchableOpacity style={styles.checkInBtn} onPress={this.refreshLocation.bind(this)}>
-              <Text style={{ color: 'white', fontSize: 16 }}>
-                Refresh
-              </Text>
-            </TouchableOpacity>
-          </View>
+            <TouchableOpacity style={styles.checkOutBtn} onPress={this.refreshLocation.bind(this)}>
+                  <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
+                    Refresh
+                </Text>
+          </TouchableOpacity>
+          </View> 
         }
+        <View style={styles.tileRow}>
+          <View style={styles.tileView}>
+            <IconMI name="calendar-clock" size={70} color={appMainBlue} />
+            <Text style={styles.txt}>
+              Last check In
+                            </Text>
+          </View>
+          <View style={styles.tileView}>
+            <IconMI name="calendar-clock" size={70} color={appMainBlue} />
+            <Text style={styles.txt}>
+              Total Hours
+                            </Text>
+          </View>
+          <View style={styles.tileView}>
+            <IconMI name="calendar-clock" size={70} color={appMainBlue} />
+            <Text style={styles.txt}>
+              Last Check In Day
+                            </Text>
+          </View>
+        </View>
       </View>
     );
   }
@@ -422,18 +456,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: appMainBackgroundColor,
   },
-  headingView: {
+  MainheadingView: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: appMainBlue,
+    //   width: 200,
+    //   height: 50,
+    //  marginTop: 20,
+    fontWeight: 'bold',
+    //   fontStyle: 'italic',
+    //   lineHeight: '1.4em',
+    //      fontSize: 100,
+    elevation: 3,
+  },
+  MainheadingText: {
+    textAlign: 'center',
+    color: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    //        backgroundColor: 'grey',
+    fontWeight: 'bold',
+    //   fontStyle: 'italic',
+    //   lineHeight: '1.4em',
+    fontSize: 30,
+    //height: 50,
+
+  },
+  headingView: {
+    flex: 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headingTextView: {
-    flex: 1,
+    flex: 3,
     justifyContent: 'center',
     alignItems: 'center'
   },
   detailTextView: {
-    flex: 3,
+    flex: 6,
     justifyContent: 'center',
     width: '80%',
   },
@@ -447,12 +508,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 27,
   },
-  btnView: {
+  TextView: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    //  backgroundColor: 'yellow',
     flex: 1,
+    fontFamily: 'Arial',
+  },
+  Text: {
+    fontSize: 1,
+    fontWeight: 'bold',
+    opacity: 0.5,
+    color: 'white',
+    // fontStyle: 'italic',
+    // fontFamily: 'Tittilium WebBold Italic',
+    fontFamily: 'Arial',
+  },
+  btnView: {
+    flex: 2,
     alignItems: 'center',
   },
   checkInBtn: {
-    backgroundColor: 'green',
+    backgroundColor: appMainBlue,
     justifyContent: 'center',
     alignItems: 'center',
     height: 45,
@@ -461,7 +539,7 @@ const styles = StyleSheet.create({
     borderRadius: 5
   },
   checkOutBtn: {
-    backgroundColor: 'red',
+    backgroundColor: appMainBlue,
     justifyContent: 'center',
     alignItems: 'center',
     height: 45,
@@ -472,20 +550,40 @@ const styles = StyleSheet.create({
   spinnerTextStyle: {
     color: '#FFF'
   },
-  circleView: {
+  view1: {
+    flex: 2,
+    backgroundColor: 'yellow',
+  },
+  view2: {
+    flex: 2,
+    //backgroundColor: 'green',
+  },
+  smallCircle: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    //backgroundColor: 'blue',
+    //  position: 'absolute',
+    // top: 1,
+    // bottom:1,
+    // left: 1,
+    // right:1,
+
   },
-  CircleShapeView: {
-    width: 180,
-    height: 180,
-    borderRadius: 180 / 2,
-    backgroundColor: 'green',
+  circleView: {
+    flex: 5,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
   },
+  // CircleShapeView: {
+  //   width: 250,
+  //   height: 250,
+  //   borderRadius: 250 / 2,
+  //   backgroundColor: 'green',
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  //   //marginTop: 20,
+  // },
   preview: {
     flex: 1,
     width: "100%",
@@ -493,13 +591,13 @@ const styles = StyleSheet.create({
   },
 
   CircleShapeViewRed: {
-    width: 180,
-    height: 180,
-    borderRadius: 180 / 2,
+    width: 250,
+    height: 250,
+    borderRadius: 250 / 2,
     backgroundColor: 'red',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
+    //  marginTop: 20,
   },
   mainpic: {
     flex: 1,
@@ -510,9 +608,38 @@ const styles = StyleSheet.create({
 
   },
   pic: {
-    width: 170,
-    height: 170,
-    borderRadius: 170 / 2,
+    width: 250,
+    height: 250,
+    borderRadius: 250 / 2,
+    borderColor: 'grey',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
   },
-
+  Time: {
+    fontSize: 45,
+  },
+  Time1: {
+    marginTop: 10,
+    fontSize: 20,
+  },
+  tileRow: {
+    flex: 2,
+    flexDirection: 'row',
+    marginHorizontal: 10,
+    marginVertical: 10,
+    // backgroundColor: 'green',
+  },
+  tileView: {
+    flex: 1,
+    borderRadius: 10,
+    marginHorizontal: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+  },
+  txt: {
+    //fontWeight: 'bold',
+    fontSize: 12
+  }
 })
