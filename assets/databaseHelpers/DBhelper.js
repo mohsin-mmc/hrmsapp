@@ -48,47 +48,38 @@ export function creatCurrentMonthTable() {
   });
 }
 
-export function sendPeriodicDatas(lat,long,imei){
-  db.transaction((txn) => {
-    txn.executeSql(
-      `select * from m_emp_mob where emppro_type='Check In' order by id DESC limit 1`,
-      [],
-      (tx, res) => {
-        var rows = res.rows.raw();
-        let dblat = rows[0].emppro_latitude
-        let dblong = rows[0].emppro_emppro_longtitude
-        if(dblat.toFixed(2) != lat.toFixed(2) && dblong.toFixed(2) != long.toFixed(2)){
-          
-            let xmls = `<soap:Envelope xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
-                              <soap:Body>
-                                <checkinout_imei xmlns="http://tempuri.org/">
-                                  <emppro_imei>${rows[0].emppro_imei}</emppro_imei>
-                                  <emppro_latitude>${rows[0].emppro_latitude}</emppro_latitude>
-                                  <emppro_longitude>${rows[0].emppro_longtitude}</emppro_longitude>
-                                  <emppro_type>${rows[0].emppro_type}</emppro_type>
-                                  <emppro_date>${rows[0].emppro_date}</emppro_date>
-                                  <emppro_time>${rows[0].emppro_time}</emppro_time>
-                                </checkinout_imei>
-                              </soap:Body>
-                            </soap:Envelope>`;
-            console.log(xmls)
-            Axios.post('https://cloud.syslinknetwork.com/att_api/webservice1.asmx?wsdl', xmls,
-            {
-              headers:
-                { 'Content-Type': 'text/xml' }
-            }).then(res => {
-              console.log(res.data);
-              // parseString(res.data, (err, json) => {
-              //   console.log(json)
-              // })
-            }).catch(err => { console.log(err) });
-        }else{
-          console.log("same")
-        }
+export function sendPeriodicDatas(imei, lat, long, date, time){
+  return new Promise((resolve,reject)=>{
 
-      }
-    );
-  });
+    db.transaction((txn) => {
+      txn.executeSql(
+        `select * from m_emp_mob where emppro_type='Check In' order by id DESC limit 1`,
+        [],
+        (tx, res) => {
+          var rows = res.rows.raw();
+          let dblat = rows[0].emppro_latitude
+          let dblong = rows[0].emppro_emppro_longtitude
+          if(dblat.toFixed(2) != lat.toFixed(2) && dblong.toFixed(2) != long.toFixed(2)){
+            tx.executeSql(
+              `insert into m_emp_mob(emppro_imei,emppro_latitude,emppro_longtitude,emppro_type,emppro_date,emppro_time) 
+                values(${imei},${lat},${long},'travelling','${date}','${time}')`,
+              [],
+              (tx, res) => {
+                if (res.rowsAffected == 1) {
+                  resolve(res.rowsAffected)
+                } else {
+                  reject(res.rowsAffected)
+                }
+              }
+            );
+          }else{
+            reject(0)
+          }
+  
+        }
+      );
+    });
+  })
 }
 
 export function DBsendData() {
@@ -174,7 +165,7 @@ export function DBcheckIn(imei, lat, long, date, time) {
     });
   })
 }
-
+ 
 export function DBcheckOut(imei, lat, long, date, time) {
   return new Promise((resolve, reject) => {
     db.transaction((txn) => {
@@ -228,7 +219,7 @@ export function getAbsentCount(){
         if(row.length > 0){
           resolve(row[0].absent)
         }else{
-          reject([])
+          reject('')
         }
     });
   })
@@ -238,14 +229,14 @@ export function getPresentCount(){
   return new Promise((resolve,reject)=>{
 
     db.executeSql(
-      `select count(*) as present from current_month where Remarks1 <> '${'Absent'}'`,
+      `select count(*) as present from current_month where Remarks1 <> '${'Absent'}' AND Remarks1 <> '${'Sunday'}'`,
       [],
       (res) => {
         let row = res.rows.raw()
         if(row.length > 0){
           resolve(row[0].present)
         }else{
-          reject([])
+          reject('')
         }
     });
   })

@@ -148,6 +148,9 @@ android {
 }
 
 dependencies {
+    compile (project(':react-native-push-notification')){
+        exclude group: 'com.google.android.gms'
+    }
     compile project(':react-native-background-job')
     compile project(':react-native-vector-icons')
     compile project(':react-native-gesture-handler')

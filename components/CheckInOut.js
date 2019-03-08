@@ -10,9 +10,11 @@ import {
   ToastAndroid,
   NetInfo,
   Image,
+  AppState
 } from 'react-native';
 const IMEI = require('react-native-imei');
 import Icon from "react-native-vector-icons/Entypo"
+var PushNotification = require('react-native-push-notification');
 
 import moment from "moment"
 import Spinner from "react-native-loading-spinner-overlay";
@@ -22,7 +24,8 @@ import {
   DBsendData,
   DBcheckIn,
   DBcheckOut,
-  sendPeriodicDatas
+  sendPeriodicDatas,
+  DBtravelData
 } from '../assets/databaseHelpers/DBhelper'
 import { appMainBackgroundColor, appMainBlue } from '../assets/Constants'
 import { RNCamera } from 'react-native-camera'
@@ -32,29 +35,30 @@ import BackgroundJob from 'react-native-background-job';
 const sendPeriodicData = {
   jobKey: "sendPeriodicData",
   job: () => {
-    NetInfo.isConnected.fetch().done(
-      (isConnected) => {
-        if (isConnected == true) {
-          console.log(isConnected)
-          // DBsendData();
-        }else{
-          console.log(isConnected)
-        }
-      }
-    );
+    let date = moment(new Date).format('YYYY-MM-DD')
+    let time = moment(new Date).format('HH:mm:ss')
       let imei = IMEI.getImei()
     navigator.geolocation.getCurrentPosition(
       position => {
         let lat = position.coords.latitude
         let long = position.coords.longitude
-        sendPeriodicDatas(lat,long,imei)  
+        sendPeriodicDatas(imei, lat, long, date, time)
+        .then(res => {
+          console.log(res)
+          NetInfo.isConnected.fetch().then(isConnected => {
+            DBsendData()
+          })
+        })  
+        .catch(err => {
+          console.log('same',err)
+        })
       },
       error => {
         console.log("Unable to find location. Please reload.")
 
       },
       {
-        enableHighAccuracy: true, timeout: 20000, maximumAge: 1000
+        enableHighAccuracy: false,timeout: 60000,
       }
     );
     }
@@ -122,6 +126,8 @@ export default class CheckInOut extends Component {
       imei: 0,
       err_location: true
     }
+    // this.handleAppStatechange = this.handleAppStatechange.bind(this)
+
   }
 
   static navigationOptions = {
@@ -140,6 +146,7 @@ export default class CheckInOut extends Component {
     this.makeTable();
     this.setTtype();
     this.sendData();
+    // this.appState()
     this.didFocusListener = this.props.navigation.addListener(
       'didFocus',() => { 
         this.makeTable();
@@ -150,6 +157,36 @@ export default class CheckInOut extends Component {
       },
       );
   }
+
+
+  // appState(){
+  //   AppState.addEventListener('change',this.handleAppStatechange)
+    
+  // }
+
+  componentWillUnmount(){
+    console.log('asd')
+    // AppState.removeEventListener('change',this.handleAppStatechange)
+  }
+
+  // handleAppStatechange(appState){
+  //   if(appState == 'background'){
+  //     PushNotification.configure({
+  //       onNotification: function(notification) {
+  //         console.log( 'NOTIFICATION:', notification );
+  //       },
+  //       requestPermissions: true
+  //     })
+      
+  //     PushNotification.localNotificationSchedule({
+  //       color:'red',
+  //       message: "You forgot to check out Today.Open app to check out.", 
+  //       date: new Date(Date.now() + (10 * 1000)) 
+  //     });
+  //   }else{
+  //     console.log(appState)
+  //   }
+  // }
 
   sendData() {
 
@@ -207,7 +244,7 @@ export default class CheckInOut extends Component {
         })
       },
       {
-        enableHighAccuracy: true, timeout: 20000, maximumAge: 1000
+        enableHighAccuracy: true, timeout: 20000, maximumAge: 10000
       }
     );
   }
@@ -238,8 +275,9 @@ export default class CheckInOut extends Component {
           
         var sendPeriodicData = {
           jobKey: "sendPeriodicData",
-          // allowExecutionInForeground : true,
-          period: 15000,
+          allowExecutionInForeground : true,
+          period: 900000,
+          // period: 40000,
           // exact: true,
           allowWhileIdle : true
         }

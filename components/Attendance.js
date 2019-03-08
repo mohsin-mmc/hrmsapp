@@ -58,8 +58,8 @@ export default class Attendance extends Component {
         .then((res) => {
             console.log(res)
             this.setState({
-                toDate: moment(currentDay).format('MM/DD/YYYY'),
-                fromDate: moment(firstDay).format('MM/DD/YYYY'),
+                toDate: moment(currentDay).format('DD/MM/YYYY'),
+                fromDate: moment(firstDay).format('DD/MM/YYYY'),
                 // toDate: currentDay,
                 // fromDate: firstDay,
                 attendanceData: res
@@ -98,16 +98,23 @@ export default class Attendance extends Component {
     setToDate(date){
         let {fromDate} = this.state
         let imei = IMEI.getImei();
+
         this.setState({
             toDate: date
         })
         if(fromDate != ''){
-            date = moment(date).format('MM-DD-YYYY')
-            fromDate = moment(fromDate).format('MM-DD-YYYY')
+            // date = moment(new Date(date)).format('MM-DD-YYYY')
+            // fromDate = moment(new Date(fromDate)).format('MM-DD-YYYY')
+            fromDate = fromDate.split('/')
+            date = date.split('/')
+
+            let from = fromDate[1]+'-'+fromDate[0]+'-'+fromDate[2]
+            let to = date[1]+'-'+date[0]+'-'+date[2]
+
             this.setState({
                 attendanceData: []
             })
-            getAttendance(fromDate,date,imei)
+            getAttendance(from,to,imei)
             .then(res=>{
                 this.setState({
                     attendanceData: res
@@ -122,18 +129,21 @@ export default class Attendance extends Component {
     setFromDate(date){
         let {toDate} = this.state
         let imei = IMEI.getImei();
-        console.log(date)
 
         this.setState({
             fromDate: date
         })
+
         if(toDate != ''){
-            date = moment(date).format('MM-DD-YYYY')
-            toDate = moment(toDate).format('MM-DD-YYYY')
+            toDate = toDate.split('/')
+            date = date.split('/')
+
+            let from = date[1]+'-'+date[0]+'-'+date[2]
+            let to = toDate[1]+'-'+toDate[0]+'-'+toDate[2]
             this.setState({
                 attendanceData: []
             })
-            getAttendance(date,toDate,imei)
+            getAttendance(from,to,imei)
             .then(res=>{
                 this.setState({
                     attendanceData: res
@@ -145,16 +155,20 @@ export default class Attendance extends Component {
         }
     }
 
-    renderCircle(remarks){
+    renderCircle(remarks,Late_Coming){
         let color=''
         if(remarks == "Sunday"){
             color = 'brown'
         }else if(remarks == 'Absent'){
             color = 'red'
         }else if(remarks == null || remarks == 'Present'){
-            color = 'green'
+            if(remarks == null && Late_Coming > 0){
+                color = 'grey'
+            }else{
+                color = 'green'
+            }
         }
-
+        console.log(Late_Coming)
         return <View style={{ height: 10, width: 10, borderRadius: 10 / 2, backgroundColor: color, marginRight: 5 }}></View>
     }
 
@@ -186,7 +200,7 @@ export default class Attendance extends Component {
                                 <DatePicker
                                     placeholder="From"
                                     date={fromDate}
-                                    format="MM/DD/YYYY"
+                                    format="DD/MM/YYYY"
                                     customStyles={{
                                         dateIcon: {
                                             position: 'absolute',
@@ -208,7 +222,7 @@ export default class Attendance extends Component {
                                 <DatePicker
                                     placeholder="To"
                                     date={toDate}
-                                    format="MM/DD/YYYY"
+                                    format="DD/MM/YYYY"
                                     customStyles={{
                                         dateIcon: {
                                             position: 'absolute',
@@ -265,6 +279,7 @@ export default class Attendance extends Component {
 
                                     {
                                         attendanceData.map((row,ind) => {
+                                            console.log(row)
                                             return(
                                             <TouchableOpacity key={ind} onPress={this.showAttendanceDetails.bind(this)} style={styles.attendanceDataRow} >
                                                 <View style={styles.innerDataRowView}>
@@ -276,7 +291,7 @@ export default class Attendance extends Component {
 
                                                     <View style={styles.innerDataRowTextView}>
                                                         <View style={{ flex: 1, justifyContent: "center", alignItems: 'center', flexDirection: 'row' }}>
-                                                            {this.renderCircle(row.Remarks1)}
+                                                            {this.renderCircle(row.Remarks1,row.Late_Coming)}
                                                             <Text style={{ fontWeight: 'bold' }}>{this.formatDate(row.tbldat_dat)}</Text>
                                                         </View>
                                                     </View>
