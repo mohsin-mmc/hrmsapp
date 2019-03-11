@@ -93,9 +93,12 @@ export default class MyHeader extends Component {
                     {this.renderModal()}
                 </Modal>
                 {
-                    (title == 'Dashboard') ?
-                        <TouchableOpacity onPress={this.openQr.bind(this)} style={styles.iconView}>
-                            <Icon name="qrcode-scan" size={25} color="white" />
+                    (title == 'Check in/out') ?
+                        // <TouchableOpacity onPress={this.openQr.bind(this)} style={styles.iconView}>
+                        //     <Icon name="qrcode-scan" size={25} color="white" />
+                        // </TouchableOpacity>
+                        <TouchableOpacity  style={styles.iconView}>
+                            {/* <Icon name="qrcode-scan" size={25} color="white" /> */}
                         </TouchableOpacity>
                         :
                         <TouchableOpacity onPress={this.back.bind(this)} style={styles.iconView}>
@@ -108,10 +111,10 @@ export default class MyHeader extends Component {
                     </Text>
                 </View>
                 {
-                    (title == 'Dashboard') ?
+                    (title == 'Check in/out') ?
 
                         <View style={styles.iconView}>
-                            <Icon name="bell-outline" size={25} color="white" />
+                            {/* <Icon name="bell-outline" size={25} color="white" /> */}
                         </View>
                         :
                         <View  style={styles.iconView}>

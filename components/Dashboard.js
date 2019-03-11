@@ -142,6 +142,22 @@ export default class App extends Component {
                 <View style={styles.container}>
                     <ScrollView>
                     <View style={styles.tileRow}>
+                        <View style={styles.tileView}>
+                            {/* <IconFA name="user-times" size={70} color={appMainBlue} /> */}
+                            <Text style={{fontSize: 70, color: appMainBlue}}>{absentCount}</Text>
+                            <Text style={styles.txt}>
+                                Total Absents
+                            </Text>
+                        </View>
+                        <View style={styles.tileView}>
+                            {/* <Icon name="calendar" size={70} color={appMainBlue} /> */}
+                            <Text style={{fontSize: 70, color: appMainBlue}}>{presentCount}</Text>
+                            <Text style={styles.txt}>
+                                Total Present
+                            </Text>
+                        </View>
+                    </View>
+                    <View style={styles.tileRow}>
                         <TouchableOpacity onPress={this.navigate.bind(this,'attendance')} style={styles.tileView}>
                             <IconFA name="calendar" size={70} color={appMainBlue} />
                             <Text style={styles.txt}>
@@ -156,26 +172,10 @@ export default class App extends Component {
                         </TouchableOpacity>
                     </View>
                     <View style={styles.tileRow}>
-                        <View style={styles.tileView}>
-                            {/* <IconFA name="user-times" size={70} color={appMainBlue} /> */}
-                            <Text style={{fontSize: 70, color: appMainBlue}}>{absentCount}</Text>
-                            <Text style={styles.txt}>
-                                Total Absents
-                            </Text>
-                        </View>
-                        <View style={styles.tileView}>
+                    <View style={styles.tileView}>
                             <Icon name="calendar" size={70} color={appMainBlue} />
                             <Text style={styles.txt}>
                                 Total Lates
-                            </Text>
-                        </View>
-                    </View>
-                    <View style={styles.tileRow}>
-                        <View style={styles.tileView}>
-                            {/* <Icon name="calendar" size={70} color={appMainBlue} /> */}
-                            <Text style={{fontSize: 70, color: appMainBlue}}>{presentCount}</Text>
-                            <Text style={styles.txt}>
-                                Total Present
                             </Text>
                         </View>
                         <View style={styles.tileView}>

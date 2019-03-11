@@ -45,12 +45,11 @@ const sendPeriodicData = {
       position => {
         let lat = position.coords.latitude
         let long = position.coords.longitude
+        console.log(position)
         sendPeriodicDatas(imei, lat, long, date, time)
           .then(res => {
             console.log(res)
-            NetInfo.isConnected.fetch().then(isConnected => {
               DBsendData()
-            })
           })
           .catch(err => {
             console.log('same', err)
@@ -61,7 +60,7 @@ const sendPeriodicData = {
 
       },
       {
-        enableHighAccuracy: false, timeout: 60000,
+        enableHighAccuracy: true, timeout: 240000, maximumAge: 5000
       }
     );
   }
@@ -128,7 +127,8 @@ export default class CheckInOut extends Component {
       type: null,
       imei: 0,
       err_location: true,
-      per:0
+      per: 0,
+      checkinTime: ''
     }
     // this.handleAppStatechange = this.handleAppStatechange.bind(this)
 
@@ -146,20 +146,60 @@ export default class CheckInOut extends Component {
     await request_READ_PHONE_STATE()
     await request_ACCESS_FINE_LOCATION();
     this.setState({ loading: true })
-    this.getCord();
+    this.getCord()
+      .then(res => {
+        this.setState({
+          lat: res.lat,
+          long: res.long,
+          loading: false,
+          imei: res.imei,
+          err_location: false
+        })
+      }).catch(err => {
+        alert('Unable to find location.')
+        this.setState({
+          loading: false,
+          err_location: true
+        })
+      })
     this.makeTable();
     this.setTtype();
     this.sendData();
+    this.getCheckinTime()
     // this.appState()
     this.didFocusListener = this.props.navigation.addListener(
       'didFocus', () => {
         this.makeTable();
         this.setState({ loading: true })
-        this.getCord();
+        this.getCord()
+          .then(res => {
+            this.setState({
+              lat: res.lat,
+              long: res.long,
+              loading: false,
+              imei: res.imei,
+              err_location: false
+            })
+          }).catch(err => {
+            alert('Unable to find location.')
+            this.setState({
+              loading: false,
+              err_location: true
+            })
+          })
         this.setTtype();
         this.sendData();
+        this.getCheckinTime();
       },
     );
+  }
+
+  getCheckinTime() {
+    AsyncStorage.getItem('checkinTime', (err, res) => {
+      this.setState({
+        checkinTime: res
+      })
+    })
   }
 
 
@@ -227,78 +267,109 @@ export default class CheckInOut extends Component {
   }
 
   getCord() {
-    let imei = IMEI.getImei()
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        let lat = position.coords.latitude
-        let long = position.coords.longitude
-        this.setState({
-          lat,
-          long,
-          loading: false,
-          imei,
-          err_location: false
-        })
-      },
-      error => {
-        Alert.alert("Unable to find location. Please reload or try opening your location.")
-        this.setState({
-          loading: false,
-          err_location: true
-        })
-      },
-      {
-        enableHighAccuracy: true, timeout: 20000, maximumAge: 10000
-      }
-    );
+    return new Promise((resolve, reject) => {
+      let imei = IMEI.getImei()
+      navigator.geolocation.getCurrentPosition(
+        position => {
+          let lat = position.coords.latitude
+          let long = position.coords.longitude
+          resolve({ lat: lat, long: long, imei: imei })
+
+        },
+        error => {
+          reject(0)
+
+        },
+        {
+          enableHighAccuracy: true, timeout: 40000,maximumAge: 5000        
+        }
+      );
+
+    })
   }
+  // getCord() {
+  //   let imei = IMEI.getImei()
+  //   navigator.geolocation.getCurrentPosition(
+  //     position => {
+  //       let lat = position.coords.latitude
+  //       let long = position.coords.longitude
+  //       this.setState({
+  //         lat,
+  //         long,
+  //         loading: false,
+  //         imei,
+  //         err_location: false
+  //       })
+  //     },
+  //     error => {
+  //       Alert.alert("Unable to find location. Please reload or try opening your location.")
+  //       this.setState({
+  //         loading: false,
+  //         err_location: true
+  //       })
+  //     },
+  //     {
+  //       enableHighAccuracy: true, timeout: 20000, maximumAge: 10000
+  //     }
+  //   );
+  // }
 
   checkIn() {
     // let imei = IMEI.getImei()
     let { lat, long, imei } = this.state
     let date = this.makeDate();
     let time = this.makeTime();
+    let checkinTime = moment(new Date).format('hh:mm:ss a')
 
     this.setState({
       loading: true
     })
+    this.getCord()
+      .then(cords => {
+        DBcheckIn(cords.imei, cords.lat, cords.long, date, time)
+          .then(res => {
+            AsyncStorage.setItem('type', 'checkIn');
+            ToastAndroid.showWithGravity(
+              'Checked In',
+              ToastAndroid.SHORT,
+              ToastAndroid.BOTTOM,
+            );
+            AsyncStorage.setItem('checkinTime', checkinTime)
+            this.setState({
+              type: 'checkIn',
+              loading: false,
+              checkinTime: checkinTime
+            })
+            this.sendData();
+            this.makeStart()
+            var sendPeriodicData = {
+              jobKey: "sendPeriodicData",
+              allowExecutionInForeground: true,
+              period: 900000,
+              // period: 300000,
+              // exact: true,
+              allowWhileIdle: true
+            }
 
-    DBcheckIn(imei, lat, long, date, time)
-      .then(res => {
-        AsyncStorage.setItem('type', 'checkIn');
-        ToastAndroid.showWithGravity(
-          'Checked In',
-          ToastAndroid.SHORT,
-          ToastAndroid.BOTTOM,
-        );
+            BackgroundJob.schedule(sendPeriodicData);
+          })
+          .catch(err => {
+            this.setState({
+              loading: false
+            })
+            ToastAndroid.showWithGravity(
+              'Something Went wrong..Please try again',
+              ToastAndroid.SHORT,
+              ToastAndroid.BOTTOM,
+            );
+          });
+      }).catch(err => {
+        alert('Unable to find location.')
         this.setState({
-          type: 'checkIn',
-          loading: false
+          loading: false,
+          err_location: true
         })
-        this.sendData();
-        this.makeStart()
-
-        var sendPeriodicData = {
-          jobKey: "sendPeriodicData",
-          allowExecutionInForeground: true,
-          period: 900000,
-          // period: 40000,
-          // exact: true,
-          allowWhileIdle: true
-        }
-
-        BackgroundJob.schedule(sendPeriodicData);
       })
-      .catch(err => {
-        this.setState({
-          loading: false
-        })
-        ToastAndroid.showWithGravity(
-          'Something Went wrong..Please try again',
-          ToastAndroid.SHORT,
-          ToastAndroid.BOTTOM,
-        );
-      });
   }
 
   checkOut() {
@@ -310,33 +381,43 @@ export default class CheckInOut extends Component {
     this.setState({
       loading: true
     })
+    this.getCord()
+      .then(cords => {
 
-    DBcheckOut(imei, lat, long, date, time)
-      .then(res => {
-        AsyncStorage.setItem('type', 'checkOut');
-        ToastAndroid.showWithGravity(
-          'Checked Out',
-          ToastAndroid.SHORT,
-          ToastAndroid.BOTTOM,
-        );
-        this.setState({
-          type: 'checkOut',
-          loading: false,
-          per: 0
-        })
-        this.sendData();
-        BackgroundJob.cancel({ jobKey: 'sendPeriodicData' });
+        DBcheckOut(cords.imei, cords.lat, cords.long, date, time)
+          .then(res => {
+            AsyncStorage.setItem('type', 'checkOut');
+            ToastAndroid.showWithGravity(
+              'Checked Out',
+              ToastAndroid.SHORT,
+              ToastAndroid.BOTTOM,
+            );
+            this.setState({
+              type: 'checkOut',
+              loading: false,
+              per: 0
+            })
+            this.sendData();
+            BackgroundJob.cancel({ jobKey: 'sendPeriodicData' });
+          })
+          .catch(err => {
+            this.setState({
+              loading: false
+            })
+            ToastAndroid.showWithGravity(
+              'Something Went wrong..Please try again',
+              ToastAndroid.SHORT,
+              ToastAndroid.BOTTOM,
+            );
+          });
       })
       .catch(err => {
+        alert('Unable to find location.')
         this.setState({
-          loading: false
+          loading: false,
+          err_location: true
         })
-        ToastAndroid.showWithGravity(
-          'Something Went wrong..Please try again',
-          ToastAndroid.SHORT,
-          ToastAndroid.BOTTOM,
-        );
-      });
+      })
   }
 
   refreshLocation() {
@@ -344,18 +425,36 @@ export default class CheckInOut extends Component {
       loading: true,
     })
     this.getCord()
+      .then(res => {
+        this.setState({
+          lat: res.lat,
+          long: res.long,
+          loading: false,
+          imei: res.imei,
+          err_location: false
+        })
+      }).catch(err => {
+        alert('Unable to find location.')
+        this.setState({
+          loading: false,
+          err_location: true
+        })
+      })
   }
 
   makeStart() {
-    (this.state.type == "checkIn")?
-    setInterval(() => {
-      this.setState({
-        per: this.state.per + 6.25,
-        counter1: this.state.counter1 + 1
-      })
-    }, 1000)
-    :
-    null
+    let interval = setInterval(() => {
+
+      if (this.state.type == 'checkOut') {
+        clearInterval(interval)
+      } else {
+
+        this.setState({
+          per: this.state.per + 6.25,
+          counter1: this.state.counter1 + 1
+        })
+      }
+    }, 900000)
   }
 
   check(type) {
@@ -368,15 +467,15 @@ export default class CheckInOut extends Component {
 
   render() {
 
-    let { type, imei, lat, long, err_location,per } = this.state;
+    let { type, imei, lat, long, err_location, per, checkinTime } = this.state;
     return (
       <View style={styles.mainApp}>
         <Spinner
           visible={this.state.loading}
-          textContent={'Requesting loaction...Please Wait'}
+          textContent={'Requesting location...Please Wait'}
           textStyle={styles.spinnerTextStyle}
         />
-        <MyHeader props={this.props} title='Attendance' />
+        <MyHeader props={this.props} title='Check in/out' />
 
         <View style={styles.circleView}>
           <ProgressCircle
@@ -397,37 +496,40 @@ export default class CheckInOut extends Component {
 
         </View>
         {
-          (err_location == false)?
-          <View style={styles.btnView}>
-            {
+          (err_location == false) ?
+            <View style={styles.btnView}>
+              {
 
-              (type == 'checkOut' || type == null) ?
-                <TouchableOpacity style={styles.checkInBtn} onPress={this.checkIn.bind(this)}>
-                  <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
-                    Check in
+                (type == 'checkOut' || type == null) ?
+                  <TouchableOpacity style={styles.checkInBtn} onPress={this.checkIn.bind(this)}>
+                    <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
+                      Check in
                 </Text>
-                </TouchableOpacity>
-                :
-                <TouchableOpacity style={styles.checkOutBtn} onPress={this.checkOut.bind(this)}>
-                  <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
-                    Check Out
+                  </TouchableOpacity>
+                  :
+                  <TouchableOpacity style={styles.checkOutBtn} onPress={this.checkOut.bind(this)}>
+                    <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
+                      Check Out
                 </Text>
-                </TouchableOpacity>
+                  </TouchableOpacity>
 
-            }
-          </View>
-          :
-          <View style={styles.btnView}>
-            <TouchableOpacity style={styles.checkOutBtn} onPress={this.refreshLocation.bind(this)}>
-                  <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
-                    Refresh
+              }
+            </View>
+            :
+            <View style={styles.btnView}>
+              <TouchableOpacity style={styles.checkOutBtn} onPress={this.refreshLocation.bind(this)}>
+                <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
+                  Refresh
                 </Text>
-          </TouchableOpacity>
-          </View> 
+              </TouchableOpacity>
+            </View>
         }
         <View style={styles.tileRow}>
           <View style={styles.tileView}>
             <IconMI name="calendar-clock" size={70} color={appMainBlue} />
+            {/* <Text style={{fontSize: 18}}>
+              {checkinTime}
+            </Text> */}
             <Text style={styles.txt}>
               Last check In
                             </Text>
