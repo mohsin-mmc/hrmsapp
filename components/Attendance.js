@@ -26,7 +26,8 @@ export default class Attendance extends Component {
             fromDate: '',
             toDate:'',
             attendanceData: [],
-            imei: 0
+            imei: 0,
+            network: false
         }
     }
 
@@ -58,15 +59,19 @@ export default class Attendance extends Component {
         .then((res) => {
             console.log(res)
             this.setState({
-                toDate: moment(currentDay).format('DD/MM/YYYY'),
-                fromDate: moment(firstDay).format('DD/MM/YYYY'),
-                // toDate: currentDay,
-                // fromDate: firstDay,
-                attendanceData: res
+                // toDate: moment(currentDay).format('DD/MM/YYYY'),
+                // fromDate: moment(firstDay).format('DD/MM/YYYY'),
+                toDate: currentDay,
+                fromDate: firstDay,
+                attendanceData: res,
+                network: false
             })
         })
         .catch((err) => {
             console.log(err)
+            this.setState({
+                network: true
+            })
         })
     }
 
@@ -117,11 +122,15 @@ export default class Attendance extends Component {
             getAttendance(from,to,imei)
             .then(res=>{
                 this.setState({
-                    attendanceData: res
+                    attendanceData: res,
+                    network: false
                 })
             })
             .catch(err =>{
                 console.log(err)
+                this.setState({
+                    network: true
+                })
             })
         }
     }
@@ -146,11 +155,15 @@ export default class Attendance extends Component {
             getAttendance(from,to,imei)
             .then(res=>{
                 this.setState({
-                    attendanceData: res
+                    attendanceData: res,
+                    network: true
                 })
             })
             .catch(err =>{
                 console.log(err)
+                this.setState({
+                    network: false
+                })
             })
         }
     }
@@ -173,7 +186,7 @@ export default class Attendance extends Component {
     }
 
     render() {
-        let { fromDate,toDate, attendanceData } = this.state
+        let { fromDate,toDate, attendanceData,network } = this.state
 
         attendanceData = attendanceData.reverse();
         return (
@@ -273,7 +286,14 @@ export default class Attendance extends Component {
 
                             (attendanceData.length == 0) ?
 
-                                <ActivityIndicator size="large" color="#0000ff" />
+                                <View>
+                                    {
+                                        (network == true)?
+                                            <ActivityIndicator size="large" color="#0000ff" />
+                                        :
+                                        null
+                                    }
+                                </View>
                                 :
                                 <ScrollView>
 

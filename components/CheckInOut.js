@@ -49,18 +49,30 @@ const sendPeriodicData = {
         sendPeriodicDatas(imei, lat, long, date, time)
           .then(res => {
             console.log(res)
+            PushNotification.localNotification({
+              color:'red',
+              message: `Different Coordinates. lat: ${lat}, long: ${long}`, 
+            });
               DBsendData()
           })
           .catch(err => {
             console.log('same', err)
+            PushNotification.localNotification({
+              color:'red',
+              message: "Same Coordinates", 
+            });
           })
       },
       error => {
         console.log("Unable to find location. Please reload.")
+        PushNotification.localNotification({
+          color:'red',
+          message: "Unable to find location", 
+        });
 
       },
       {
-        enableHighAccuracy: true, timeout: 240000, maximumAge: 5000
+        enableHighAccuracy: true, timeout: 20000 , maximumAge: 5000
       }
     );
   }
@@ -117,6 +129,13 @@ export async function request_ACCESS_FINE_LOCATION() {
   }
 }
 
+PushNotification.configure({
+  onNotification: function(notification) {
+    console.log( 'NOTIFICATION:', notification );
+  },
+  requestPermissions: true
+})
+
 export default class CheckInOut extends Component {
   constructor(props) {
     super(props)
@@ -126,11 +145,11 @@ export default class CheckInOut extends Component {
       loading: false,
       type: null,
       imei: 0,
-      err_location: true,
+      err_location: false,
       per: 0,
       checkinTime: ''
     }
-    // this.handleAppStatechange = this.handleAppStatechange.bind(this)
+    this.handleAppStatechange = this.handleAppStatechange.bind(this)
 
   }
 
@@ -145,28 +164,28 @@ export default class CheckInOut extends Component {
 
     await request_READ_PHONE_STATE()
     await request_ACCESS_FINE_LOCATION();
-    this.setState({ loading: true })
-    this.getCord()
-      .then(res => {
-        this.setState({
-          lat: res.lat,
-          long: res.long,
-          loading: false,
-          imei: res.imei,
-          err_location: false
-        })
-      }).catch(err => {
-        alert('Unable to find location.')
-        this.setState({
-          loading: false,
-          err_location: true
-        })
-      })
+    // this.setState({ loading: true })
+    // this.getCord()
+    //   .then(res => {
+    //     this.setState({
+    //       lat: res.lat,
+    //       long: res.long,
+    //       loading: false,
+    //       imei: res.imei,
+    //       err_location: false
+    //     })
+    //   }).catch(err => {
+    //     alert('Unable to find location.')
+    //     this.setState({
+    //       loading: false,
+    //       err_location: true
+    //     })
+    //   })
     this.makeTable();
     this.setTtype();
     this.sendData();
     this.getCheckinTime()
-    // this.appState()
+    this.appState()
     this.didFocusListener = this.props.navigation.addListener(
       'didFocus', () => {
         this.makeTable();
@@ -203,34 +222,28 @@ export default class CheckInOut extends Component {
   }
 
 
-  // appState(){
-  //   AppState.addEventListener('change',this.handleAppStatechange)
+  appState(){
+    AppState.addEventListener('change',this.handleAppStatechange)
 
-  // }
+  }
 
   componentWillUnmount() {
     console.log('asd')
-    // AppState.removeEventListener('change',this.handleAppStatechange)
+    AppState.removeEventListener('change',this.handleAppStatechange)
   }
 
-  // handleAppStatechange(appState){
-  //   if(appState == 'background'){
-  //     PushNotification.configure({
-  //       onNotification: function(notification) {
-  //         console.log( 'NOTIFICATION:', notification );
-  //       },
-  //       requestPermissions: true
-  //     })
+  handleAppStatechange(appState){
+    if(appState == 'background'){
+      
 
-  //     PushNotification.localNotificationSchedule({
-  //       color:'red',
-  //       message: "You forgot to check out Today.Open app to check out.", 
-  //       date: new Date(Date.now() + (10 * 1000)) 
-  //     });
-  //   }else{
-  //     console.log(appState)
-  //   }
-  // }
+      // PushNotification.localNotification({
+      //   color:'red',
+      //   message: "You forgot to check out Today.Open app to check out.", 
+      // });
+    }else{
+      console.log(appState)
+    }
+  }
 
   sendData() {
 
@@ -273,6 +286,11 @@ export default class CheckInOut extends Component {
         position => {
           let lat = position.coords.latitude
           let long = position.coords.longitude
+          this.setState({
+            lat: lat,
+            long: long,
+            imei: imei
+          })
           resolve({ lat: lat, long: long, imei: imei })
 
         },
@@ -342,16 +360,16 @@ export default class CheckInOut extends Component {
             })
             this.sendData();
             this.makeStart()
-            var sendPeriodicData = {
-              jobKey: "sendPeriodicData",
-              allowExecutionInForeground: true,
-              period: 900000,
-              // period: 300000,
-              // exact: true,
-              allowWhileIdle: true
-            }
+            // var sendPeriodicData = {
+            //   jobKey: "sendPeriodicData",
+            //   allowExecutionInForeground: true,
+            //   // period: 900000,
+            //   period: 300000,
+            //   // exact: true,
+            //   allowWhileIdle: true
+            // }
 
-            BackgroundJob.schedule(sendPeriodicData);
+            // BackgroundJob.schedule(sendPeriodicData);
           })
           .catch(err => {
             this.setState({
@@ -398,7 +416,7 @@ export default class CheckInOut extends Component {
               per: 0
             })
             this.sendData();
-            BackgroundJob.cancel({ jobKey: 'sendPeriodicData' });
+            // BackgroundJob.cancel({ jobKey: 'sendPeriodicData' });
           })
           .catch(err => {
             this.setState({
@@ -464,6 +482,49 @@ export default class CheckInOut extends Component {
     (type == 'checkIn') ? this.checkIn() : this.checkOut()
   }
 
+  sentTravelling(){
+    this.setState({loading: true})
+    let date = moment(new Date).format('YYYY-MM-DD')
+    let time = moment(new Date).format('HH:mm:ss')
+    let imei = IMEI.getImei()
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        let lat = position.coords.latitude
+        let long = position.coords.longitude
+        console.log(position)
+        sendPeriodicDatas(imei, lat, long, date, time)
+          .then(res => {
+            console.log(res)
+            PushNotification.localNotification({
+              color:'red',
+              message: `Different Coordinates. lat: ${lat}, long: ${long}`, 
+            });
+              DBsendData()
+              this.setState({loading: false})
+          })
+          .catch(err => {
+            console.log('same', err)
+            PushNotification.localNotification({
+              color:'red',
+              message: "Same Coordinates", 
+            });
+            this.setState({loading: false})
+          })
+      },
+      error => {
+        console.log("Unable to find location. Please reload.")
+        PushNotification.localNotification({
+          color:'red',
+          message: "Unable to find location", 
+        });
+        this.setState({loading: false})
+      },
+      {
+        enableHighAccuracy: true, timeout: 20000 , maximumAge: 5000
+      }
+    );
+  }
+
 
   render() {
 
@@ -481,9 +542,9 @@ export default class CheckInOut extends Component {
           <ProgressCircle
             percent={per}
             radius={120}
-            borderWidth={18}
+            borderWidth={12}
             color={appMainBackgroundColor}
-            shadowColor="white"
+            shadowColor={(type == 'checkOut') ? 'white' : 'red'}
             bgColor=
             {(type == 'checkOut' || type == null) ? 'white' : 'white'}
           >
@@ -525,11 +586,28 @@ export default class CheckInOut extends Component {
             </View>
         }
         <View style={styles.tileRow}>
-          <View style={styles.tileView}>
+        <View style={styles.btnView}>
+        {
+          (type == 'checkIn')?
+              <TouchableOpacity onPress={this.sentTravelling.bind(this)} style={styles.checkInBtn}>
+                  <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
+                    Place
+                  </Text>
+              </TouchableOpacity>
+          :
+          null
+        }
+        </View>
+          <View style={styles.detailTextView}>
+            <Text style={styles.detailText}>Your Latitude: <Text style={{ fontWeight: 'normal' }}>{lat}</Text></Text>
+            <Text style={styles.detailText}>Your Longitude: <Text style={{ fontWeight: 'normal' }}>{long}</Text></Text>
+            <Text style={styles.detailText}>IMEI No: <Text style={{ fontWeight: 'normal' }}>{imei}</Text></Text>
+          </View>
+          {/* <View style={styles.tileView}>
             <IconMI name="calendar-clock" size={70} color={appMainBlue} />
-            {/* <Text style={{fontSize: 18}}>
+            <Text style={{fontSize: 18}}>
               {checkinTime}
-            </Text> */}
+            </Text>
             <Text style={styles.txt}>
               Last check In
                             </Text>
@@ -545,7 +623,7 @@ export default class CheckInOut extends Component {
             <Text style={styles.txt}>
               Last Check In Day
                             </Text>
-          </View>
+          </View> */}
         </View>
       </View>
     );
@@ -596,9 +674,10 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   detailTextView: {
-    flex: 6,
-    justifyContent: 'center',
-    width: '80%',
+    flex: 1,
+    justifyContent: 'space-between',
+    alignItems:'flex-start',
+    marginHorizontal: 20
   },
   detailText: {
     fontSize: 17,
@@ -628,7 +707,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Arial',
   },
   btnView: {
-    flex: 2,
+    flex: 1,
     alignItems: 'center',
   },
   checkInBtn: {
@@ -641,7 +720,7 @@ const styles = StyleSheet.create({
     borderRadius: 5
   },
   checkOutBtn: {
-    backgroundColor: appMainBlue,
+    backgroundColor: 'red',
     justifyContent: 'center',
     alignItems: 'center',
     height: 45,
@@ -726,11 +805,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
   },
   tileRow: {
-    flex: 2,
-    flexDirection: 'row',
-    marginHorizontal: 10,
-    marginVertical: 10,
-    // backgroundColor: 'green',
+    flex: 3,
   },
   tileView: {
     flex: 1,
