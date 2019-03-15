@@ -34,6 +34,7 @@ import { RNCamera } from 'react-native-camera'
 
 import BackgroundJob from 'react-native-background-job';
 import MyHeader from './Layouts/Header';
+import Splachscreen from './Splashscreen';
 
 const sendPeriodicData = {
   jobKey: "sendPeriodicData",
@@ -50,29 +51,29 @@ const sendPeriodicData = {
           .then(res => {
             console.log(res)
             PushNotification.localNotification({
-              color:'red',
-              message: `Different Coordinates. lat: ${lat}, long: ${long}`, 
+              color: 'red',
+              message: `Different Coordinates. lat: ${lat}, long: ${long}`,
             });
-              DBsendData()
+            DBsendData()
           })
           .catch(err => {
             console.log('same', err)
             PushNotification.localNotification({
-              color:'red',
-              message: "Same Coordinates", 
+              color: 'red',
+              message: "Same Coordinates",
             });
           })
       },
       error => {
         console.log("Unable to find location. Please reload.")
         PushNotification.localNotification({
-          color:'red',
-          message: "Unable to find location", 
+          color: 'red',
+          message: "Unable to find location",
         });
 
       },
       {
-        enableHighAccuracy: true, timeout: 20000 , maximumAge: 5000
+        enableHighAccuracy: true, timeout: 20000, maximumAge: 1000
       }
     );
   }
@@ -130,8 +131,8 @@ export async function request_ACCESS_FINE_LOCATION() {
 }
 
 PushNotification.configure({
-  onNotification: function(notification) {
-    console.log( 'NOTIFICATION:', notification );
+  onNotification: function (notification) {
+    console.log('NOTIFICATION:', notification);
   },
   requestPermissions: true
 })
@@ -147,7 +148,8 @@ export default class CheckInOut extends Component {
       imei: 0,
       err_location: false,
       per: 0,
-      checkinTime: ''
+      checkinTime: '',
+      splash: false
     }
     this.handleAppStatechange = this.handleAppStatechange.bind(this)
 
@@ -189,23 +191,23 @@ export default class CheckInOut extends Component {
     this.didFocusListener = this.props.navigation.addListener(
       'didFocus', () => {
         this.makeTable();
-        this.setState({ loading: true })
-        this.getCord()
-          .then(res => {
-            this.setState({
-              lat: res.lat,
-              long: res.long,
-              loading: false,
-              imei: res.imei,
-              err_location: false
-            })
-          }).catch(err => {
-            alert('Unable to find location.')
-            this.setState({
-              loading: false,
-              err_location: true
-            })
-          })
+        // this.setState({ loading: true })
+        // this.getCord()
+        //   .then(res => {
+        //     this.setState({
+        //       lat: res.lat,
+        //       long: res.long,
+        //       loading: false,
+        //       imei: res.imei,
+        //       err_location: false
+        //     })
+        //   }).catch(err => {
+        //     alert('Unable to find location.')
+        //     this.setState({
+        //       loading: false,
+        //       err_location: true
+        //     })
+        //   })
         this.setTtype();
         this.sendData();
         this.getCheckinTime();
@@ -216,31 +218,32 @@ export default class CheckInOut extends Component {
   getCheckinTime() {
     AsyncStorage.getItem('checkinTime', (err, res) => {
       this.setState({
-        checkinTime: res
+        checkinTime: res,
+        imei : IMEI.getImei()
       })
     })
   }
 
 
-  appState(){
-    AppState.addEventListener('change',this.handleAppStatechange)
+  appState() {
+    AppState.addEventListener('change', this.handleAppStatechange)
 
   }
 
   componentWillUnmount() {
     console.log('asd')
-    AppState.removeEventListener('change',this.handleAppStatechange)
+    AppState.removeEventListener('change', this.handleAppStatechange)
   }
 
-  handleAppStatechange(appState){
-    if(appState == 'background'){
-      
+  handleAppStatechange(appState) {
+    if (appState == 'background') {
+
 
       // PushNotification.localNotification({
       //   color:'red',
       //   message: "You forgot to check out Today.Open app to check out.", 
       // });
-    }else{
+    } else {
       console.log(appState)
     }
   }
@@ -257,6 +260,7 @@ export default class CheckInOut extends Component {
   }
 
   setTtype() {
+    
     AsyncStorage.getItem('type', (err, res) => {
       if (res != null) {
         this.setState({
@@ -299,7 +303,7 @@ export default class CheckInOut extends Component {
 
         },
         {
-          enableHighAccuracy: true, timeout: 40000,maximumAge: 5000        
+          enableHighAccuracy: true, timeout: 40000, maximumAge: 1000
         }
       );
 
@@ -356,7 +360,8 @@ export default class CheckInOut extends Component {
             this.setState({
               type: 'checkIn',
               loading: false,
-              checkinTime: checkinTime
+              checkinTime: checkinTime,
+              imei: cords.imei
             })
             this.sendData();
             this.makeStart()
@@ -364,11 +369,10 @@ export default class CheckInOut extends Component {
             //   jobKey: "sendPeriodicData",
             //   allowExecutionInForeground: true,
             //   // period: 900000,
-            //   period: 300000,
+            //   period: 40000,
             //   // exact: true,
             //   allowWhileIdle: true
             // }
-
             // BackgroundJob.schedule(sendPeriodicData);
           })
           .catch(err => {
@@ -413,10 +417,11 @@ export default class CheckInOut extends Component {
             this.setState({
               type: 'checkOut',
               loading: false,
-              per: 0
+              per: 0,
+              imei: cords.imei
             })
             this.sendData();
-            // BackgroundJob.cancel({ jobKey: 'sendPeriodicData' });
+            BackgroundJob.cancel({ jobKey: 'sendPeriodicData' });
           })
           .catch(err => {
             this.setState({
@@ -482,53 +487,54 @@ export default class CheckInOut extends Component {
     (type == 'checkIn') ? this.checkIn() : this.checkOut()
   }
 
-  sentTravelling(){
-    this.setState({loading: true})
-    let date = moment(new Date).format('YYYY-MM-DD')
-    let time = moment(new Date).format('HH:mm:ss')
-    let imei = IMEI.getImei()
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        let lat = position.coords.latitude
-        let long = position.coords.longitude
-        console.log(position)
-        sendPeriodicDatas(imei, lat, long, date, time)
-          .then(res => {
-            console.log(res)
-            PushNotification.localNotification({
-              color:'red',
-              message: `Different Coordinates. lat: ${lat}, long: ${long}`, 
-            });
-              DBsendData()
-              this.setState({loading: false})
-          })
-          .catch(err => {
-            console.log('same', err)
-            PushNotification.localNotification({
-              color:'red',
-              message: "Same Coordinates", 
-            });
-            this.setState({loading: false})
-          })
-      },
-      error => {
-        console.log("Unable to find location. Please reload.")
-        PushNotification.localNotification({
-          color:'red',
-          message: "Unable to find location", 
-        });
-        this.setState({loading: false})
-      },
-      {
-        enableHighAccuracy: true, timeout: 20000 , maximumAge: 5000
-      }
-    );
-  }
+  // sentTravelling() {
+  //   this.setState({ loading: true })
+  //   let date = moment(new Date).format('YYYY-MM-DD')
+  //   let time = moment(new Date).format('HH:mm:ss')
+  //   let imei = IMEI.getImei()
+  //   navigator.geolocation.getCurrentPosition(
+  //     position => {
+  //       let lat = position.coords.latitude
+  //       let long = position.coords.longitude
+  //       console.log(position)
+  //       sendPeriodicDatas(imei, lat, long, date, time)
+  //         .then(res => {
+  //           console.log(res)
+  //           PushNotification.localNotification({
+  //             color: 'red',
+  //             message: `Different Coordinates. lat: ${lat}, long: ${long}`,
+  //           });
+  //           DBsendData()
+  //           this.setState({ loading: false })
+  //         })
+  //         .catch(err => {
+  //           console.log('same', err)
+  //           PushNotification.localNotification({
+  //             color: 'red',
+  //             message: "Same Coordinates",
+  //           });
+  //           this.setState({ loading: false })
+  //         })
+  //     },
+  //     error => {
+  //       console.log("Unable to find location. Please reload.")
+  //       PushNotification.localNotification({
+  //         color: 'red',
+  //         message: "Unable to find location",
+  //       });
+  //       this.setState({ loading: false })
+  //     },
+  //     {
+  //       enableHighAccuracy: true, timeout: 20000, maximumAge: 5000
+  //     }
+  //   );
+  // }
 
 
   render() {
 
-    let { type, imei, lat, long, err_location, per, checkinTime } = this.state;
+    let { type, imei, lat, long, err_location, per, checkinTime,splash } = this.state;
+    
     return (
       <View style={styles.mainApp}>
         <Spinner
@@ -536,7 +542,7 @@ export default class CheckInOut extends Component {
           textContent={'Requesting location...Please Wait'}
           textStyle={styles.spinnerTextStyle}
         />
-        <MyHeader props={this.props} title='Check in/out' />
+        <MyHeader props={this.props} imei={imei} title='Attendance Mark' />
 
         <View style={styles.circleView}>
           <ProgressCircle
@@ -563,14 +569,14 @@ export default class CheckInOut extends Component {
 
                 (type == 'checkOut' || type == null) ?
                   <TouchableOpacity style={styles.checkInBtn} onPress={this.checkIn.bind(this)}>
-                    <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
-                      Check in
+                    <Text style={{ color: 'white', fontSize: 25, fontWeight: 'bold' }}>
+                      Attendance Mark In
                 </Text>
                   </TouchableOpacity>
                   :
                   <TouchableOpacity style={styles.checkOutBtn} onPress={this.checkOut.bind(this)}>
-                    <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
-                      Check Out
+                    <Text style={{ color: 'white', fontSize: 25, fontWeight: 'bold' }}>
+                      Attendance Mark Out
                 </Text>
                   </TouchableOpacity>
 
@@ -586,8 +592,8 @@ export default class CheckInOut extends Component {
             </View>
         }
         <View style={styles.tileRow}>
-        <View style={styles.btnView}>
-        {
+          <View style={styles.btnView}>
+            {/* {
           (type == 'checkIn')?
               <TouchableOpacity onPress={this.sentTravelling.bind(this)} style={styles.checkInBtn}>
                   <Text style={{ color: 'white', fontSize: 30, fontWeight: 'bold' }}>
@@ -596,34 +602,44 @@ export default class CheckInOut extends Component {
               </TouchableOpacity>
           :
           null
-        }
-        </View>
+        } */}
+            {/* </View>
           <View style={styles.detailTextView}>
             <Text style={styles.detailText}>Your Latitude: <Text style={{ fontWeight: 'normal' }}>{lat}</Text></Text>
             <Text style={styles.detailText}>Your Longitude: <Text style={{ fontWeight: 'normal' }}>{long}</Text></Text>
             <Text style={styles.detailText}>IMEI No: <Text style={{ fontWeight: 'normal' }}>{imei}</Text></Text>
-          </View>
-          {/* <View style={styles.tileView}>
-            <IconMI name="calendar-clock" size={70} color={appMainBlue} />
-            <Text style={{fontSize: 18}}>
-              {checkinTime}
-            </Text>
-            <Text style={styles.txt}>
-              Last check In
-                            </Text>
-          </View>
-          <View style={styles.tileView}>
-            <IconMI name="calendar-clock" size={70} color={appMainBlue} />
-            <Text style={styles.txt}>
-              Total Hours
-                            </Text>
-          </View>
-          <View style={styles.tileView}>
-            <IconMI name="calendar-clock" size={70} color={appMainBlue} />
-            <Text style={styles.txt}>
-              Last Check In Day
-                            </Text>
           </View> */}
+          <View style={{flexDirection: 'row', justifyContent: 'center', flex: 1,alignItems: 'center'}}>
+
+              <View style={styles.tileView}>
+                <IconMI name="calendar-clock" size={70} color={appMainBlue} />
+                <Text style={{ fontSize: 14 }}>
+                  {checkinTime}
+                </Text>
+                <Text style={styles.txt}>
+                  Last check In
+                              </Text>
+              </View>
+              <View style={styles.tileView}>
+                <IconMI name="calendar-clock" size={70} color={appMainBlue} />
+                <Text style={{ fontSize: 14,textAlign: "center" }}>
+                  {moment(checkinTime,"hh:mm:ss a").fromNow()}
+                </Text>
+                <Text style={styles.txt}>
+                  Total Hours
+                </Text>
+              </View>
+              <View style={styles.tileView}>
+                <IconMI name="calendar-clock" size={70} color={appMainBlue} />
+                <Text style={{ fontSize: 14,textAlign: "center" }}>
+                  {moment().format('dddd')}
+                </Text>
+                <Text style={styles.txt}>
+                  Last Check In Day
+                </Text>
+              </View>
+          </View>
+          </View>
         </View>
       </View>
     );
@@ -676,7 +692,7 @@ const styles = StyleSheet.create({
   detailTextView: {
     flex: 1,
     justifyContent: 'space-between',
-    alignItems:'flex-start',
+    alignItems: 'flex-start',
     marginHorizontal: 20
   },
   detailText: {
@@ -813,6 +829,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 5,
     justifyContent: 'center',
     alignItems: 'center',
+    height: 120,
     elevation: 2,
   },
   txt: {

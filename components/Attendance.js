@@ -13,7 +13,6 @@ import Icon from "react-native-vector-icons/AntDesign"
 import IconMa from "react-native-vector-icons/MaterialCommunityIcons"
 import moment from "moment"
 import DatePicker from 'react-native-datepicker'
-import Spinner from "react-native-loading-spinner-overlay";
 import { getAttendance } from '../assets/fuctions/AttendanceFunctions'
 const IMEI = require('react-native-imei');
 import { appMainBackgroundColor, appMainBlue } from '../assets/Constants'
@@ -196,7 +195,7 @@ export default class Attendance extends Component {
           textContent={'Requesting loaction...Please Wait'}
         //   textStyle={styles.spinnerTextStyle}
         /> */}
-                <MyHeader props={this.props} title='Attendance' />
+                <MyHeader props={this.props} title='Attendance Report' />
                 <View style={styles.filterView}>
                     {/* <View style={styles.headingView}>
                         <Text style={{ fontSize: 23,color:"white",textAlign:'center' }}>
@@ -286,12 +285,17 @@ export default class Attendance extends Component {
 
                             (attendanceData.length == 0) ?
 
-                                <View>
+                                <View style={{flex: 1,alignItems: 'center',justifyContent: 'center'}}>
                                     {
                                         (network == true)?
-                                            <ActivityIndicator size="large" color="#0000ff" />
+                                        <View>
+                                            {alert('No internet connection')}
+                                            <Text>
+                                                No internet!
+                                            </Text>
+                                        </View>
                                         :
-                                        null
+                                        <ActivityIndicator size="large" color="#0000ff" />
                                     }
                                 </View>
                                 :

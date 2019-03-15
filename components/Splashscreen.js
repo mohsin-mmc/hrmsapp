@@ -1,24 +1,33 @@
 import React, { Component } from 'react';
 import { Platform, StyleSheet, Styles, Image, TouchableOpacity, Alert, NetInfo, Button, Text, View } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
-import BackgroundTask from 'react-native-background-task';
+import { appMainBlue } from '../assets/Constants';
 
-export default class App extends Component {
+export default class Splachscreen extends Component {
     constructor(props) {
         super(props);
         this.state = {
             connectionInfo: null,
             lat: '',
-            long: ''
+            long: '',
+            splash: true
         }
-    }
 
+    }
+componentDidMount(){
+    setTimeout(() => {
+        this.setState({splash: false})
+    }, 3000);
+}
 
     render() {
+
+        if(this.state.splash == false){
+            this.props.navigation.navigate('navigator')
+        }
         return (
             <View style={styles.main}>
 
-                <Image style={styles.mainApp} source={require('../assets/images/mmc-logo.png')}
+                <Image style={styles.mainApp} source={require('../assets/images/logo.png')}
                 />
             </View>
 

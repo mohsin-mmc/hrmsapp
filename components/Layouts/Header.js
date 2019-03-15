@@ -4,7 +4,8 @@ import {
     View,
     StyleSheet,
     TouchableOpacity,
-    Modal
+    Modal,
+    Alert
 } from 'react-native';
 
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons'
@@ -36,10 +37,13 @@ export default class MyHeader extends Component {
     renderModal(){
         return(
             <View style={styles.legends}>
+                        <View style={{ flex: 1,alignItems: 'flex-end',justifyContent:'flex-end',marginHorizontal: 10 }}>
+                        <Icon name="close-circle" onPress={this.setModalVisible.bind(this,false)} size={25} color={appMainBlue} />
+                        </View>
                         <View style={{ flex: 1,justifyContent:"flex-end" }}>
                             <Text style={{ fontWeight: 'bold', marginLeft: 10 }}>LEGENDS:</Text>
                         </View>
-                        <View style={{ flex: 2, flexDirection: 'row' }}>
+                        <View style={{ flex: 3, flexDirection: 'row' }}>
                             <View style={{ flex: 1 }}>
                                 <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'row' }}>
                                     <Text>Absent =</Text><View style={{ height: 10, width: 10, borderRadius: 10 / 2, backgroundColor: 'red', marginLeft: 5 }}></View>
@@ -65,11 +69,11 @@ export default class MyHeader extends Component {
                             </View>
                         </View>
                         <View style={{flex: 8, justifyContent:'flex-start' , alignItems:'center'}}>
-                            <TouchableOpacity onPressOut={this.setModalVisible.bind(this,false)} style={{width: '90%',height:50, justifyContent:'center',alignItems:'center', backgroundColor: appMainBlue, borderRadius:5}}>
+                            {/* <TouchableOpacity onPressOut={this.setModalVisible.bind(this,false)} style={{width: '90%',height:50, justifyContent:'center',alignItems:'center', backgroundColor: appMainBlue, borderRadius:5}}>
                                 <Text style={{fontSize: 15, fontWeight: 'bold',color:'white'}}>
                                     Back
                                 </Text>
-                            </TouchableOpacity>
+                            </TouchableOpacity> */}
                         </View>
                     </View>
         )
@@ -79,7 +83,7 @@ export default class MyHeader extends Component {
         this.setState({ modalVisible: visible });
     }
     render() {
-        let { title, props } = this.props
+        let { title, props,imei } = this.props
         let { modalVisible} = this.state
         return (
             <View style={styles.headingView}>
@@ -93,7 +97,7 @@ export default class MyHeader extends Component {
                     {this.renderModal()}
                 </Modal>
                 {
-                    (title == 'Check in/out') ?
+                    (title == 'Attendance Mark') ?
                         // <TouchableOpacity onPress={this.openQr.bind(this)} style={styles.iconView}>
                         //     <Icon name="qrcode-scan" size={25} color="white" />
                         // </TouchableOpacity>
@@ -102,7 +106,7 @@ export default class MyHeader extends Component {
                         </TouchableOpacity>
                         :
                         <TouchableOpacity onPress={this.back.bind(this)} style={styles.iconView}>
-                            <Icon name="arrow-left" size={25} color="white" />
+                            {/* <Icon name="arrow-left" size={25} color="white" /> */}
                         </TouchableOpacity>
                 }
                 <View style={styles.titleView}>
@@ -111,10 +115,16 @@ export default class MyHeader extends Component {
                     </Text>
                 </View>
                 {
-                    (title == 'Check in/out') ?
+                    (title == 'Attendance Mark') ?
 
                         <View style={styles.iconView}>
                             {/* <Icon name="bell-outline" size={25} color="white" /> */}
+                            <Icon onPress={()=>{Alert.alert('IMEI',imei)}} name="help-circle-outline" size={25} color="white" />
+                        </View>
+                        :
+                        (title == 'Dashboard')?
+                        <View  style={styles.iconView}>
+                            {/* <Icon onPress={this.setModalVisible.bind(this,true)} name="help-circle-outline" size={25} color="white" /> */}
                         </View>
                         :
                         <View  style={styles.iconView}>

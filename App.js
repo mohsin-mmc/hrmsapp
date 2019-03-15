@@ -14,7 +14,7 @@ import Login from './components/Login'
 import Attendance from './components/Attendance'
 import Qrscan from './components/Qrscan'
 import AttendanceDetails from './components/AttendanceDetails';
-
+import Splachscreen from './components/Splashscreen';
 
 // const Drawer = createDrawerNavigator({
 //   home: {screen: Home},
@@ -57,13 +57,17 @@ const AppTabNavigator = createMaterialTopTabNavigator({
 
 // ----------------- stack navigator ---------------
 const MainNavigator = createStackNavigator({
-  login: {screen: Login, navigationOptions: { header: null } },
-  attendancedetails: {screen: AttendanceDetails , navigationOptions:{header: null}},
-  application: {screen: AppTabNavigator, navigationOptions: { header: null } }, 
-  qrscan: {screen: Qrscan, navigationOptions: { header: null } }, 
+  splash: {screen: Splachscreen, navigationOptions: { header: null } },
+  navigator: {screen: AppTabNavigator , navigationOptions:{header: null}},
 });
+// const MainNavigator = createStackNavigator({
+//   login: {screen: Login, navigationOptions: { header: null } },
+//   attendancedetails: {screen: AttendanceDetails , navigationOptions:{header: null}},
+//   application: {screen: AppTabNavigator, navigationOptions: { header: null } }, 
+//   qrscan: {screen: Qrscan, navigationOptions: { header: null } }, 
+// });
 
-const Apps = createAppContainer(AppTabNavigator);
+const Apps = createAppContainer(MainNavigator);
 // --------------------
 
 class App extends React.Component {

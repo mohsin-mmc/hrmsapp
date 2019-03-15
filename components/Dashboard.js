@@ -185,7 +185,7 @@ export default class App extends Component {
                             </Text>
                         </View>
                     </View>
-                    <View style={styles.tileRow}>
+                    {/* <View style={styles.tileRow}>
                         <View style={styles.tileView}>
                             <Icon name="calendar" size={70} color={appMainBlue} />
                             <Text style={styles.txt}>
@@ -198,7 +198,7 @@ export default class App extends Component {
                                 Over Time
                             </Text>
                         </View>
-                    </View>
+                    </View> */}
                     </ScrollView>
                 </View>
             </View>
